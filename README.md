@@ -60,8 +60,8 @@ The system is designed for scalability and can be configured for both local deve
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/your-org/ox-pca-spark-engine.git
-cd ox-pca-spark-engine
+git clone https://github.com/ibrahim-alawaye/apache-spark-standalone.git
+cd apache-spark-standalone
 ```
 
 ### Start the Spark Cluster
