@@ -1,0 +1,35 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Spark Metrics Dashboard",
+    "tags": ["spark"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Executor Count",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "spark_executor_count",
+            "legendFormat": "Active Executors"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "spark_executor_memory_bytes",
+            "legendFormat": "Memory Used"
+          }
+        ]
+      }
+    ],
+    "schemaVersion": 21,
+    "version": 0
+  },
+  "overwrite": true
+}

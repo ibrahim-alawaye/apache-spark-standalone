@@ -1,0 +1,17 @@
+{
+  "dashboard": {
+    "title": "Spark Metrics",
+    "panels": [
+      {
+        "title": "Active Spark Sessions",
+        "type": "gauge",
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "spark_active_sessions"
+          }
+        ]
+      }
+    ]
+  }
+}

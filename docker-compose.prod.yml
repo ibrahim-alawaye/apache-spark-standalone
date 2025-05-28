@@ -1,0 +1,53 @@
+
+
+services:
+  spark-master:
+    environment:
+      - SPARK_ENV=prod
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  spark-worker:
+    environment:
+      - SPARK_ENV=prod
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  redis:
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  minio:
+    environment:
+      MINIO_STORAGE_SIZE: "100Gi"
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+
+  prometheus:
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  grafana:
+    deploy:
+      restart_policy:
+        condition: on-failure
+
+  spark-api:
+    deploy:
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3

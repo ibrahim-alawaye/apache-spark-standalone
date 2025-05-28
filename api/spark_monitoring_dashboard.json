@@ -1,0 +1,543 @@
+{
+    "dashboard": {
+      "id": null,
+      "uid": "spark-monitoring",
+      "title": "Spark Enterprise Performance Dashboard",
+      "tags": ["spark", "performance", "monitoring"],
+      "timezone": "browser",
+      "refresh": "5s",
+      "panels": [
+        {
+          "title": "Application Status & Health",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 0}
+        },
+        {
+          "title": "Running Applications",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 1},
+          "targets": [
+            {
+              "expr": "count(up{job=\"spark-applications\"})",
+              "legendFormat": "Active Apps"
+            }
+          ],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "value_and_name"
+          }
+        },
+        {
+          "title": "Component Health Status",
+          "type": "table",
+          "gridPos": {"h": 6, "w": 18, "x": 6, "y": 1},
+          "targets": [
+            {
+              "expr": "up{job=~\"spark-applications|spark-master|spark-worker\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true
+                },
+                "renameByName": {
+                  "instance": "Instance",
+                  "job": "Component",
+                  "Value": "Status"
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "align": "left",
+                "displayMode": "color-text",
+                "filterable": true
+              },
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {"text": "UP", "color": "green"},
+                    "0": {"text": "DOWN", "color": "red"}
+                  }
+                }
+              ]
+            }
+          }
+        },
+        {
+          "title": "Executor Metrics",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 7}
+        },
+        {
+          "title": "Active Executors",
+          "type": "stat",
+          "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8},
+          "targets": [
+            {
+              "expr": "sum(metrics_worker_executors_Value{job=\"spark-worker\"})",
+              "legendFormat": "Executors"
+            }
+          ],
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area"
+          }
+        },
+        {
+          "title": "Executor Lifecycle",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 18, "x": 6, "y": 8},
+          "targets": [
+            {
+              "expr": "sum(metrics_worker_executors_Value)",
+              "legendFormat": "Active Executors"
+            },
+            {
+              "expr": "rate(metrics_executor_added_total[5m])",
+              "legendFormat": "Add Rate"
+            },
+            {
+              "expr": "rate(metrics_executor_removed_total[5m])",
+              "legendFormat": "Remove Rate"
+            }
+          ]
+        },
+        {
+          "title": "Executor Resource Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 24, "x": 0, "y": 16},
+          "targets": [
+            {
+              "expr": "sum(metrics_worker_coresUsed_Value{job=\"spark-worker\"})",
+              "legendFormat": "Cores Used"
+            },
+            {
+              "expr": "sum(metrics_worker_memUsed_MB_Value{job=\"spark-worker\"})",
+              "legendFormat": "Memory Used (MB)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "axisPlacement": "auto",
+                "barAlignment": 0,
+                "drawStyle": "line",
+                "fillOpacity": 10,
+                "gradientMode": "none",
+                "lineInterpolation": "linear",
+                "lineWidth": 1,
+                "pointSize": 5,
+                "showPoints": "never",
+                "spanNulls": false,
+                "stacking": {
+                  "group": "A",
+                  "mode": "none"
+                }
+              }
+            },
+            "overrides": [
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Memory Used (MB)"
+                },
+                "properties": [
+                  {
+                    "id": "unit",
+                    "value": "megabytes"
+                  },
+                  {
+                    "id": "custom.axisPlacement",
+                    "value": "right"
+                  }
+                ]
+              },
+              {
+                "matcher": {
+                  "id": "byName",
+                  "options": "Cores Used"
+                },
+                "properties": [
+                  {
+                    "id": "color",
+                    "value": {
+                      "fixedColor": "green",
+                      "mode": "fixed"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "title": "Cluster Health",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 24}
+        },
+        {
+          "title": "Cluster Cores",
+          "type": "gauge",
+          "gridPos": {"h": 6, "w": 8, "x": 0, "y": 25},
+          "targets": [
+            {
+              "expr": "sum(metrics_worker_coresUsed_Value + metrics_worker_coresFree_Value)",
+              "legendFormat": "Total Cores"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 16,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "blue" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Cluster Memory",
+          "type": "gauge",
+          "gridPos": {"h": 6, "w": 8, "x": 8, "y": 25},
+          "targets": [
+            {
+              "expr": "sum(metrics_worker_memUsed_MB_Value + metrics_worker_memFree_MB_Value)/1024",
+              "legendFormat": "Total Memory (GB)"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "decgbytes",
+              "min": 0,
+              "max": 32,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "blue" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Heap Usage",
+          "type": "gauge",
+          "gridPos": {"h": 6, "w": 8, "x": 16, "y": 25},
+          "targets": [
+            {
+              "expr": "avg(metrics_jvm_heap_usage_Value{job=~\"spark-.*\"})",
+              "legendFormat": "Avg Heap Usage"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "min": 0,
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 0.7, "color": "yellow" },
+                  { "value": 0.85, "color": "red" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Memory Distribution",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 31}
+        },
+        {
+          "title": "Heap Memory Regions",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 32},
+          "targets": [
+            {
+              "expr": "metrics_jvm_pools_G1_Eden_Space_used_Value{job=\"spark-worker\"}",
+              "legendFormat": "Eden Space"
+            },
+            {
+              "expr": "metrics_jvm_pools_G1_Survivor_Space_used_Value{job=\"spark-worker\"}",
+              "legendFormat": "Survivor Space"
+            },
+            {
+              "expr": "metrics_jvm_pools_G1_Old_Gen_used_Value{job=\"spark-worker\"}",
+              "legendFormat": "Old Gen"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes",
+              "custom": {
+                "fillOpacity": 20,
+                "stacking": {
+                  "mode": "normal",
+                  "group": "A"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "Memory Usage Trends",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 32},
+          "targets": [
+            {
+              "expr": "metrics_jvm_heap_used_Value{job=~\"spark-.*\"}",
+              "legendFormat": "Used - {{job}}"
+            },
+            {
+              "expr": "metrics_jvm_heap_committed_Value{job=~\"spark-.*\"}",
+              "legendFormat": "Committed - {{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            }
+          }
+        },
+        {
+          "title": "GC Performance",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 40}
+        },
+        {
+          "title": "GC Collection Time",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 0, "y": 41},
+          "targets": [
+            {
+              "expr": "rate(metrics_jvm_G1_Young_Generation_time_Value{job=~\"spark-.*\"}[5m])",
+              "legendFormat": "Young Gen - {{job}}"
+            },
+            {
+              "expr": "rate(metrics_jvm_G1_Old_Generation_time_Value{job=~\"spark-.*\"}[5m])",
+              "legendFormat": "Old Gen - {{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 60
+              }
+            }
+          }
+        },
+        {
+          "title": "GC Collection Count",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 12, "x": 12, "y": 41},
+          "targets": [
+            {
+              "expr": "metrics_jvm_G1_Young_Generation_count_Value{job=~\"spark-.*\"}",
+              "legendFormat": "Young Gen - {{job}}"
+            },
+            {
+              "expr": "metrics_jvm_G1_Old_Generation_count_Value{job=~\"spark-.*\"}",
+              "legendFormat": "Old Gen - {{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "custom": {
+                "drawStyle": "line",
+                "lineInterpolation": "stepAfter"
+              }
+            }
+          }
+        },
+        {
+          "title": "Worker Performance",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 49}
+        },
+        {
+          "title": "CPU Usage Per Worker",
+          "type": "bargauge",
+          "gridPos": {"h": 6, "w": 12, "x": 0, "y": 50},
+          "targets": [
+            {
+              "expr": "metrics_worker_coresUsed_Value/(metrics_worker_coresUsed_Value + metrics_worker_coresFree_Value)",
+              "legendFormat": "{{instance}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 0.7, "color": "yellow" },
+                  { "value": 0.85, "color": "red" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "Memory Usage Per Worker",
+          "type": "bargauge",
+          "gridPos": {"h": 6, "w": 12, "x": 12, "y": 50},
+          "targets": [
+            {
+              "expr": "metrics_worker_memUsed_MB_Value/(metrics_worker_memUsed_MB_Value + metrics_worker_memFree_MB_Value)",
+              "legendFormat": "{{instance}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "max": 1,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "value": null, "color": "green" },
+                  { "value": 0.7, "color": "yellow" },
+                  { "value": 0.85, "color": "red" }
+                ]
+              }
+            }
+          }
+        },
+        {
+          "title": "JVM Metrics",
+          "type": "row",
+          "gridPos": {"h": 1, "w": 24, "x": 0, "y": 56}
+        },
+        {
+          "title": "Direct Memory Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 8, "x": 0, "y": 57},
+          "targets": [
+            {
+              "expr": "metrics_jvm_direct_used_Value{job=~\"spark-.*\"}",
+              "legendFormat": "{{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            }
+          }
+        },
+        {
+          "title": "Metaspace Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 8, "x": 8, "y": 57},
+          "targets": [
+            {
+              "expr": "metrics_jvm_pools_Metaspace_used_Value{job=~\"spark-.*\"}",
+              "legendFormat": "{{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            }
+          }
+        },
+        {
+          "title": "Code Cache Usage",
+          "type": "timeseries",
+          "gridPos": {"h": 8, "w": 8, "x": 16, "y": 57},
+          "targets": [
+            {
+              "expr": "metrics_jvm_pools_CodeHeap__non_nmethods__used_Value{job=~\"spark-.*\"}",
+              "legendFormat": "Non-methods - {{job}}"
+            },
+            {
+              "expr": "metrics_jvm_pools_CodeHeap__profiled_nmethods__used_Value{job=~\"spark-.*\"}",
+              "legendFormat": "Profiled - {{job}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            }
+          }
+        }
+      ],
+      "templating": {
+        "list": [
+          {
+            "name": "job",
+            "type": "query",
+            "datasource": "Prometheus",
+            "query": "label_values(job)",
+            "refresh": 2
+          },
+          {
+            "name": "instance",
+            "type": "query",
+            "datasource": "Prometheus",
+            "query": "label_values(metrics_worker_executors_Value, instance)",
+            "refresh": 2
+          },
+          {
+            "name": "application",
+            "type": "query",
+            "datasource": "Prometheus",
+            "query": "label_values(up{job=\"spark-applications\"}, instance)",
+            "refresh": 2
+          }
+        ]
+      },
+      "time": {
+        "from": "now-3h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ]
+      },
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "description": "Comprehensive Spark cluster monitoring dashboard with application, executor, memory, and performance metrics",
+      "links": []
+    },
+    "overwrite": true
+  }
+  

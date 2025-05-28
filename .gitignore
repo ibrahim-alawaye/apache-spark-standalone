@@ -1,0 +1,99 @@
+# Spark related
+metastore_db/
+derby.log
+spark-warehouse/
+/tmp/spark-events/
+/tmp/spark-temp/
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Log files
+*.log
+logs/
+log/
+
+# Java/Scala specific
+*.class
+*.war
+*.ear
+target/
+.mvn/
+mvnw
+mvnw.cmd
+
+# Virtual environments
+venv/
+ENV/
+env/
+.qodo/
+.venv/
+env.bak/
+venv.bak/
+
+# IDE specific files
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+.settings/
+.project
+.classpath
+.factorypath
+*.iml
+*.iws
+*.ipr
+.metadata/
+
+# Temporary files
+*.swp
+*.swo
+*~
+tmp/
+temp/
+
+# Package files
+*.7z
+*.dmg
+*.gz
+*.iso
+*.tar
+*.zip
+*.rar
+
+# Generated documentation
+docs/build/
+site/
+
+monitoring/grafana/csv/
+monitoring/grafana/png/
+monitoring/prometheus/pdf/
+monitoring/grafana/grafana.db
+monitoring/grafana/grafana.db
+monitoring/grafana/pdf/
+monitoring/grafana/plugins/
+deps/
+jars/aws-java-sdk-bundle-1.12.261.jar
+
+# Keep
+!.gitkeep
+
