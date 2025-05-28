@@ -16,7 +16,7 @@ A comprehensive Apache Spark cluster setup for data processing and analytics, pa
 
 ## Overview
 
-OX-PCA Spark Engine provides a ready-to-use Apache Spark cluster with the following components:
+Spark Engine provides a ready-to-use Apache Spark cluster with the following components:
 - Spark Master and Worker nodes
 - Redis for distributed caching
 - MinIO for S3-compatible object storage
