@@ -17,7 +17,7 @@ RUN mkdir -p /opt/spark/external-jars \
     && mkdir -p /opt/spark/conf
 
 # Copy external JARs
-COPY jars/ /opt/spark/external-jars/
+COPY scripts/jars/ /opt/spark/external-jars/
 
 # Set classpath for external jars
 ENV SPARK_CLASSPATH="/opt/spark/external-jars/*"
