@@ -15,4 +15,15 @@ docker-compose -f docker-compose.yml -f docker-compose.${ENV}.yml \
 # Remove the network
 docker network rm spark-engine_spark_network || true
 
-echo "All Spark services have been stopped successfully."
+# Clean up unused containers and networks
+docker container prune -f
+docker network prune -f
+
+# Remove unused volumes
+docker volume prune -f
+
+# Clean up temporary files
+rm -rf /tmp/spark-events/*
+rm -rf /tmp/spark-checkpoints/*
+
+echo "All Spark services have been stopped and cleaned up successfully."
