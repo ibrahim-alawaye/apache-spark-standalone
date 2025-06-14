@@ -1,7 +1,7 @@
 #!/bin/bash
 ENV=${1:-local}
 
-python3 download_jars.py
+python3 scripts/download_jars.py
 
 # Get the root directory of the project
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
