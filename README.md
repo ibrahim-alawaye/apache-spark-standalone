@@ -233,3 +233,7 @@ To adjust the number of workers, modify the `scripts/start-spark.sh` script and 
 
 
 For more information or support, contact mailto:ibalawaye@gmail.com or open an issue on the repository.
+
+
+
+docker-compose -f docker-compose.prefect.yml --project-name spark-engine build --no-cache

@@ -1,0 +1,153 @@
+services:
+  ### Prefect Database
+  database:
+    image: postgres:alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=prefect
+      - POSTGRES_SHARED_PRELOAD_LIBRARIES=pg_stat_statements
+      - POSTGRES_MAX_CONNECTIONS=200
+    expose:
+      - 5432
+    volumes:
+      - db:/var/lib/postgresql/data
+    networks:
+      spark_network:
+        ipv4_address: 172.20.0.30
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ### Prefect Server API and UI
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.prefect
+    restart: always
+    volumes:
+      - prefect:/root/.prefect
+      - "./flows:/root/flows"
+    entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "server", "start", "--host", "0.0.0.0", "--port", "4200"]
+    environment:
+      # External URLs (for UI and external access)
+      - PREFECT_UI_URL=http://localhost:4200
+      - PREFECT_UI_API_URL=http://localhost:4200/api
+      # Internal API URL (for CLI commands within server container)
+      - PREFECT_API_URL=http://localhost:4200/api
+      # Server configuration
+      - PREFECT_SERVER_API_HOST=0.0.0.0
+      - PREFECT_SERVER_API_PORT=4200
+      - PREFECT_API_DATABASE_CONNECTION_URL=postgresql+asyncpg://postgres:postgres@172.20.0.30:5432/prefect
+      - PREFECT_SERVER_API_KEEPALIVE_TIMEOUT=5
+      - PREFECT_API_REQUEST_TIMEOUT=60
+      - PREFECT_SERVER_ALLOW_EPHEMERAL_MODE=false
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    ports:
+      - 4200:4200
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      spark_network:
+        ipv4_address: 172.20.0.31
+
+  ### Prefect Worker 1
+  worker-1:
+    build:
+      context: .
+      dockerfile: Dockerfile.prefect
+    restart: always
+    entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "worker", "start", "-p", "default", "-t", "process", "-n", "worker-1"]
+    environment:
+      # Workers connect to server via internal network
+      - PREFECT_API_URL=http://172.20.0.31:4200/api
+      - PREFECT_WORKER_HEARTBEAT_SECONDS=30
+      - PREFECT_WORKER_QUERY_SECONDS=10
+      - PREFECT_WORKER_PREFETCH_SECONDS=10
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    volumes:
+      - "./flows:/root/flows"  # Mount flows directory for access to flows
+    networks:
+      spark_network:
+        ipv4_address: 172.20.0.32
+    depends_on:
+      - server
+
+  ### Prefect Worker 2
+  worker-2:
+    build:
+      context: .
+      dockerfile: Dockerfile.prefect
+    restart: always
+    entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "worker", "start", "-p", "default", "-t", "process", "-n", "worker-2"]
+    environment:
+      # Workers connect to server via internal network
+      - PREFECT_API_URL=http://172.20.0.31:4200/api
+      - PREFECT_WORKER_HEARTBEAT_SECONDS=30
+      - PREFECT_WORKER_QUERY_SECONDS=10
+      - PREFECT_WORKER_PREFETCH_SECONDS=10
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    volumes:
+      - "./flows:/root/flows"  # Mount flows directory for access to flows
+    networks:
+      spark_network:
+        ipv4_address: 172.20.0.33
+    depends_on:
+      - server
+
+  ### Prefect Worker 3
+  worker-3:
+    build:
+      context: .
+      dockerfile: Dockerfile.prefect
+    restart: always
+    entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "worker", "start", "-p", "default", "-t", "process", "-n", "worker-3"]
+    environment:
+      # Workers connect to server via internal network
+      - PREFECT_API_URL=http://172.20.0.31:4200/api
+      - PREFECT_WORKER_HEARTBEAT_SECONDS=30
+      - PREFECT_WORKER_QUERY_SECONDS=10
+      - PREFECT_WORKER_PREFETCH_SECONDS=10
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    volumes:
+      - "./flows:/root/flows"  # Mount flows directory for access to flows
+    networks:
+      spark_network:
+        ipv4_address: 172.20.0.34
+    depends_on:
+      - server
+
+  ### Prefect CLI
+  cli:
+    build:
+      context: .
+      dockerfile: Dockerfile.prefect
+    entrypoint: "sh"  
+    working_dir: "/root/flows"
+    volumes:
+      - "./flows:/root/flows"
+    environment:
+      # CLI connects to server via internal network
+      - PREFECT_API_URL=http://172.20.0.31:4200/api
+      - PYSPARK_PYTHON=python3
+      - PYSPARK_DRIVER_PYTHON=python3
+    networks:
+      spark_network:
+        ipv4_address: 172.20.0.35
+
+volumes:
+  prefect:
+  db:
+
+networks:
+  spark_network:
+    external: true
+    name: spark-engine_spark_network
