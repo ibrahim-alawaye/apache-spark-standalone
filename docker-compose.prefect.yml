@@ -31,6 +31,7 @@ services:
     volumes:
       - prefect:/root/.prefect
       - "./flows:/root/flows"
+      - "./spark-jobs:/root/spark-jobs"
     entrypoint: ["/opt/prefect/entrypoint.sh", "prefect", "server", "start", "--host", "0.0.0.0", "--port", "4200"]
     environment:
       # External URLs (for UI and external access)
@@ -45,8 +46,9 @@ services:
       - PREFECT_SERVER_API_KEEPALIVE_TIMEOUT=5
       - PREFECT_API_REQUEST_TIMEOUT=60
       - PREFECT_SERVER_ALLOW_EPHEMERAL_MODE=false
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
+      - PYSPARK_PYTHON=/usr/local/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3
+      - SPARK_MASTER_URL=spark://172.20.0.2:7077
     ports:
       - 4200:4200
     depends_on:
@@ -69,10 +71,12 @@ services:
       - PREFECT_WORKER_HEARTBEAT_SECONDS=30
       - PREFECT_WORKER_QUERY_SECONDS=10
       - PREFECT_WORKER_PREFETCH_SECONDS=10
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3
+      - SPARK_MASTER_URL=spark://172.20.0.2:7077
     volumes:
       - "./flows:/root/flows"  # Mount flows directory for access to flows
+      - "./spark-jobs:/root/spark-jobs" 
     networks:
       spark_network:
         ipv4_address: 172.20.0.32
@@ -92,10 +96,12 @@ services:
       - PREFECT_WORKER_HEARTBEAT_SECONDS=30
       - PREFECT_WORKER_QUERY_SECONDS=10
       - PREFECT_WORKER_PREFETCH_SECONDS=10
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3
+      - SPARK_MASTER_URL=spark://172.20.0.2:7077
     volumes:
       - "./flows:/root/flows"  # Mount flows directory for access to flows
+      - "./spark-jobs:/root/spark-jobs"
     networks:
       spark_network:
         ipv4_address: 172.20.0.33
@@ -115,10 +121,12 @@ services:
       - PREFECT_WORKER_HEARTBEAT_SECONDS=30
       - PREFECT_WORKER_QUERY_SECONDS=10
       - PREFECT_WORKER_PREFETCH_SECONDS=10
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3
+      - SPARK_MASTER_URL=spark://172.20.0.2:7077
     volumes:
-      - "./flows:/root/flows"  # Mount flows directory for access to flows
+      - "./flows:/root/flows" 
+      - "./spark-jobs:/root/spark-jobs" 
     networks:
       spark_network:
         ipv4_address: 172.20.0.34
@@ -134,11 +142,13 @@ services:
     working_dir: "/root/flows"
     volumes:
       - "./flows:/root/flows"
+      - "./spark-jobs:/root/spark-jobs"
     environment:
       # CLI connects to server via internal network
       - PREFECT_API_URL=http://172.20.0.31:4200/api
-      - PYSPARK_PYTHON=python3
-      - PYSPARK_DRIVER_PYTHON=python3
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/local/bin/python3
+      - SPARK_MASTER_URL=spark://172.20.0.2:7077
     networks:
       spark_network:
         ipv4_address: 172.20.0.35

@@ -20,6 +20,9 @@ services:
       - SPARK_DRIVER_HOST=172.20.0.2
       - SPARK_DRIVER_BIND_ADDRESS=172.20.0.2
       - SPARK_METRICS_ON=true
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/bin/python3
+      - SPARK_CONF_DIR=/opt/spark/conf
       - SPARK_METRICS_CONF=/opt/spark/conf/metrics.properties
       - SPARK_JAVA_OPTS=-javaagent:/opt/spark/jars/jmx_prometheus_javaagent.jar=9091:/opt/spark/conf/prometheus.yml
     ports:
@@ -27,11 +30,12 @@ services:
       - "4040-4060:4040-4060" 
       - "7077:7077"
       - "9091:9091"
+      - "2228:22" 
     volumes:
       - ./config/${SPARK_ENV}/spark-defaults.conf:/opt/spark/conf/spark-defaults.conf
       - ./config/${SPARK_ENV}/spark-conf:/opt/spark/conf
       - /tmp/spark-events:/tmp/spark-events
-      - ./job-samples:/opt/spark/job-samples
+      - "./spark-jobs:/root/spark-jobs"
       - ./monitoring/jmx/jmx_prometheus_javaagent.jar:/opt/spark/jars/jmx_prometheus_javaagent.jar
     depends_on:
       redis:
@@ -62,6 +66,8 @@ services:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
       - SPARK_METRICS_ON=true
+      - PYSPARK_PYTHON=/usr/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/usr/bin/python3
       - SPARK_WORKER_MEMORY=${SPARK_WORKER_MEMORY}
       - SPARK_WORKER_CORES=${SPARK_WORKER_CORES}
       - SPARK_EXECUTOR_MEMORY=${SPARK_EXECUTOR_MEMORY}
@@ -76,10 +82,11 @@ services:
       - ./config/${SPARK_ENV}/spark-conf:/opt/spark/conf
       - /tmp/spark-events:/tmp/spark-events
       - /tmp/spark-temp:/tmp/spark-temp
-      - ./job-samples:/opt/spark/job-samples
+      - "./spark-jobs:/root/spark-jobs"
       - ./monitoring/jmx/jmx_prometheus_javaagent.jar:/opt/spark/jars/jmx_prometheus_javaagent.jar
     expose:
       - "8081"
+      - "2223:22"
     depends_on:
       spark-master:
         condition: service_healthy

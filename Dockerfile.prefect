@@ -1,0 +1,211 @@
+FROM prefecthq/prefect:3-python3.9
+
+# Install system dependencies including SSH client
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    procps \
+    openssh-client \
+    sshpass \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional Python packages for Prefect workflows
+RUN pip install --no-cache-dir \
+    boto3 \
+    requests \
+    pandas \
+    pyarrow
+
+# Create SSH configuration directory
+RUN mkdir -p /root/.ssh
+
+# Configure SSH client for automatic host key acceptance
+RUN echo "Host *\n\
+    StrictHostKeyChecking no\n\
+    UserKnownHostsFile=/dev/null\n\
+    LogLevel ERROR" > /root/.ssh/config
+
+# Set proper permissions for SSH config
+RUN chmod 600 /root/.ssh/config
+
+# Create wait-for-server script
+RUN mkdir -p /opt/prefect && \
+    echo '#!/bin/bash\n\
+\n\
+SERVER_URL="http://172.20.0.31:4200/api/health"\n\
+MAX_ATTEMPTS=30\n\
+WAIT_TIME=5\n\
+\n\
+echo "Waiting for Prefect server to be ready at $SERVER_URL..."\n\
+\n\
+for i in $(seq 1 $MAX_ATTEMPTS); do\n\
+    if curl -f -s "$SERVER_URL" > /dev/null 2>&1; then\n\
+        echo "✅ Prefect server is ready!"\n\
+        exit 0\n\
+    fi\n\
+    echo "⏳ Attempt $i/$MAX_ATTEMPTS: Server not ready, waiting ${WAIT_TIME}s..."\n\
+    sleep $WAIT_TIME\n\
+done\n\
+\n\
+echo "❌ ERROR: Prefect server not ready after $((MAX_ATTEMPTS * WAIT_TIME)) seconds!"\n\
+exit 1' > /opt/prefect/wait-for-server.sh
+
+# Create FIXED SSH helper script for Spark jobs
+RUN echo '#!/bin/bash\n\
+\n\
+# SSH connection parameters\n\
+SPARK_HOST="${SPARK_HOST:-172.20.0.2}"\n\
+SPARK_USER="${SPARK_USER:-root}"\n\
+SPARK_PASS="${SPARK_PASS:-sparkpass}"\n\
+SPARK_PORT="${SPARK_PORT:-22}"\n\
+\n\
+# Function to run SSH command with proper environment\n\
+run_ssh_command() {\n\
+    local command="$1"\n\
+    echo "🔗 Executing via SSH: $command"\n\
+    \n\
+    sshpass -p "$SPARK_PASS" ssh \\\n\
+        -o StrictHostKeyChecking=no \\\n\
+        -o UserKnownHostsFile=/dev/null \\\n\
+        -o LogLevel=ERROR \\\n\
+        -p "$SPARK_PORT" \\\n\
+        "$SPARK_USER@$SPARK_HOST" \\\n\
+        "source /root/.bashrc && $command"\n\
+}\n\
+\n\
+# Function to submit Spark job (FIXED PATH HANDLING)\n\
+submit_spark_job() {\n\
+    local job_file="$1"\n\
+    local spark_args="${2:-}"\n\
+    \n\
+    # Clean up job file path - remove spark-jobs/ prefix if present\n\
+    job_file=$(echo "$job_file" | sed "s|^spark-jobs/||")\n\
+    job_file=$(basename "$job_file")\n\
+    \n\
+    local command="/opt/spark/bin/spark-submit \\\n\
+        --master spark://spark-master:7077 \\\n\
+        --deploy-mode client \\\n\
+        $spark_args \\\n\
+        /root/spark-jobs/$job_file"\n\
+    \n\
+    echo "🚀 Submitting Spark job: $job_file"\n\
+    echo "📁 Full path: /root/spark-jobs/$job_file"\n\
+    \n\
+    # First check if file exists\n\
+    if run_ssh_command "test -f /root/spark-jobs/$job_file"; then\n\
+        echo "✅ Job file found"\n\
+        run_ssh_command "$command"\n\
+    else\n\
+        echo "❌ Job file not found: /root/spark-jobs/$job_file"\n\
+        echo "📋 Available files:"\n\
+        run_ssh_command "ls -la /root/spark-jobs/"\n\
+        return 1\n\
+    fi\n\
+}\n\
+\n\
+# Function to test SSH connection\n\
+test_ssh_connection() {\n\
+    echo "🔍 Testing SSH connection to Spark master..."\n\
+    \n\
+    if run_ssh_command "echo '\''SSH connection successful'\''"; then\n\
+        echo "✅ SSH connection working!"\n\
+        \n\
+        # Test Java with proper environment\n\
+        if run_ssh_command "java -version"; then\n\
+            echo "✅ Java available"\n\
+        else\n\
+            echo "⚠️ Java test failed"\n\
+        fi\n\
+        \n\
+        # Test Spark availability\n\
+        if run_ssh_command "test -f /opt/spark/bin/spark-submit"; then\n\
+            echo "✅ Spark submit available"\n\
+            return 0\n\
+        else\n\
+            echo "❌ Spark submit not found"\n\
+            return 1\n\
+        fi\n\
+    else\n\
+        echo "❌ SSH connection failed"\n\
+        return 1\n\
+    fi\n\
+}\n\
+\n\
+# Main script logic\n\
+case "$1" in\n\
+    "test")\n\
+        test_ssh_connection\n\
+        ;;\n\
+    "submit")\n\
+        if [ -z "$2" ]; then\n\
+            echo "❌ Error: Job file required"\n\
+            echo "Usage: $0 submit <job_file> [spark_args]"\n\
+            exit 1\n\
+        fi\n\
+        submit_spark_job "$2" "$3"\n\
+        ;;\n\
+    "command")\n\
+        if [ -z "$2" ]; then\n\
+            echo "❌ Error: Command required"\n\
+            echo "Usage: $0 command <ssh_command>"\n\
+            exit 1\n\
+        fi\n\
+        run_ssh_command "$2"\n\
+        ;;\n\
+    *)\n\
+        echo "Usage: $0 {test|submit|command}"\n\
+        echo "  test                     - Test SSH connection"\n\
+        echo "  submit <job> [args]      - Submit Spark job"\n\
+        echo "  command <cmd>            - Run SSH command"\n\
+        exit 1\n\
+        ;;\n\
+esac' > /opt/prefect/spark-ssh.sh
+
+# Create main entrypoint script
+RUN echo '#!/bin/bash\n\
+\n\
+# Set SSH environment variables\n\
+export SPARK_HOST="${SPARK_HOST:-172.20.0.2}"\n\
+export SPARK_USER="${SPARK_USER:-root}"\n\
+export SPARK_PASS="${SPARK_PASS:-sparkpass}"\n\
+export SPARK_PORT="${SPARK_PORT:-22}"\n\
+\n\
+# Wait for Prefect server if this is a worker\n\
+if [[ "$1" == "prefect" && "$2" == "worker" ]]; then\n\
+    echo "🚀 Starting Prefect worker..."\n\
+    \n\
+    # Test SSH connection before starting worker\n\
+    echo "🔍 Testing SSH connection to Spark master..."\n\
+    if /opt/prefect/spark-ssh.sh test; then\n\
+        echo "✅ SSH connection verified"\n\
+    else\n\
+        echo "⚠️ SSH connection failed - Spark jobs may not work"\n\
+    fi\n\
+    \n\
+    /opt/prefect/wait-for-server.sh\n\
+    if [ $? -ne 0 ]; then\n\
+        echo "❌ Failed to connect to Prefect server"\n\
+        exit 1\n\
+    fi\n\
+    echo "✅ Server is ready, starting worker..."\n\
+    sleep 2\n\
+fi\n\
+\n\
+# Execute the command\n\
+echo "🔄 Executing: $@"\n\
+exec "$@"' > /opt/prefect/entrypoint.sh
+
+# Make scripts executable
+RUN chmod +x /opt/prefect/entrypoint.sh /opt/prefect/wait-for-server.sh /opt/prefect/spark-ssh.sh
+
+# Set working directory
+WORKDIR /root
+
+# Set environment variables for SSH
+ENV SPARK_HOST=172.20.0.2
+ENV SPARK_USER=root
+ENV SPARK_PASS=sparkpass
+ENV SPARK_PORT=22
+
+# Set the entrypoint
+ENTRYPOINT ["/opt/prefect/entrypoint.sh"]

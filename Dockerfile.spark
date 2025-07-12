@@ -2,11 +2,27 @@ FROM apache/spark:3.5.0-python3
 
 USER root
 
-# Install system dependencies
+# Install system dependencies including SSH server
 RUN apt-get update && apt-get install -y \
     python3-pip \
     curl \
+    openssh-server \
+    sshpass \
     && rm -rf /var/lib/apt/lists/*
+
+# Find the correct JAVA_HOME and set it
+RUN JAVA_BIN=$(which java) && \
+    JAVA_HOME_REAL=$(readlink -f $JAVA_BIN | sed 's|/bin/java||') && \
+    echo "export JAVA_HOME=$JAVA_HOME_REAL" >> /root/.bashrc && \
+    echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /root/.bashrc && \
+    echo "JAVA_HOME=$JAVA_HOME_REAL" >> /etc/environment
+
+# Configure SSH with environment preservation
+RUN mkdir /var/run/sshd && \
+    echo 'root:sparkpass' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    echo 'PermitUserEnvironment yes' >> /etc/ssh/sshd_config
 
 # Install Python packages
 COPY api/requirements.txt /tmp/
@@ -26,6 +42,14 @@ ENV SPARK_CLASSPATH="/opt/spark/external-jars/*"
 ARG SPARK_ENV=local
 COPY config/${SPARK_ENV}/spark-defaults.conf /opt/spark/conf/
 
-EXPOSE 4040 7077 8080 8081
+# Create SSH startup script
+RUN echo '#!/bin/bash\n\
+# Start SSH daemon in background\n\
+/usr/sbin/sshd -D &\n\
+\n\
+# Execute the original command\n\
+exec "$@"' > /start-with-ssh.sh && chmod +x /start-with-ssh.sh
 
-ENTRYPOINT ["/opt/entrypoint.sh"]
+EXPOSE 4040 7077 8080 8081 22
+
+ENTRYPOINT ["/start-with-ssh.sh", "/opt/entrypoint.sh"]
