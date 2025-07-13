@@ -1,6 +1,8 @@
 # SME Spark-Engine Standalone Data Processing with Prefect Orchestration
 
 A comprehensive Apache Spark cluster setup with Prefect workflow orchestration for data processing and analytics, packaged with Docker for easy deployment in both local development and production environments.
+<img width="2323" height="1232" alt="Blank diagram" src="https://github.com/user-attachments/assets/fe560597-71f5-4566-ad64-9851da3be140" />
+
 
 ## Overview
 
