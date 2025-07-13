@@ -15,14 +15,33 @@ RUN JAVA_BIN=$(which java) && \
     JAVA_HOME_REAL=$(readlink -f $JAVA_BIN | sed 's|/bin/java||') && \
     echo "export JAVA_HOME=$JAVA_HOME_REAL" >> /root/.bashrc && \
     echo "export PATH=\$PATH:\$JAVA_HOME/bin" >> /root/.bashrc && \
-    echo "JAVA_HOME=$JAVA_HOME_REAL" >> /etc/environment
+    echo "JAVA_HOME=$JAVA_HOME_REAL" >> /etc/environment && \
+    echo "PATH=$PATH:$JAVA_HOME_REAL/bin:/opt/spark/bin" >> /etc/environment
 
 # Configure SSH with environment preservation
 RUN mkdir /var/run/sshd && \
     echo 'root:sparkpass' | chpasswd && \
     sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
     sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
-    echo 'PermitUserEnvironment yes' >> /etc/ssh/sshd_config
+    echo 'PermitUserEnvironment yes' >> /etc/ssh/sshd_config && \
+    echo 'AcceptEnv LANG LC_* JAVA_HOME PATH SPARK_HOME' >> /etc/ssh/sshd_config
+
+# Create SSH environment file for root user with correct paths
+RUN JAVA_BIN=$(which java) && \
+    JAVA_HOME_REAL=$(readlink -f $JAVA_BIN | sed 's|/bin/java||') && \
+    mkdir -p /root/.ssh && \
+    echo "JAVA_HOME=$JAVA_HOME_REAL" > /root/.ssh/environment && \
+    echo "SPARK_HOME=/opt/spark" >> /root/.ssh/environment && \
+    echo "PATH=$JAVA_HOME_REAL/bin:/opt/spark/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >> /root/.ssh/environment && \
+    chmod 600 /root/.ssh/environment
+
+# Create a profile script that will be sourced by SSH sessions
+RUN JAVA_BIN=$(which java) && \
+    JAVA_HOME_REAL=$(readlink -f $JAVA_BIN | sed 's|/bin/java||') && \
+    echo "export JAVA_HOME=$JAVA_HOME_REAL" > /etc/profile.d/spark-env.sh && \
+    echo "export SPARK_HOME=/opt/spark" >> /etc/profile.d/spark-env.sh && \
+    echo "export PATH=\$JAVA_HOME/bin:/opt/spark/bin:\$PATH" >> /etc/profile.d/spark-env.sh && \
+    chmod +x /etc/profile.d/spark-env.sh
 
 # Install Python packages
 COPY api/requirements.txt /tmp/
@@ -42,8 +61,22 @@ ENV SPARK_CLASSPATH="/opt/spark/external-jars/*"
 ARG SPARK_ENV=local
 COPY config/${SPARK_ENV}/spark-defaults.conf /opt/spark/conf/
 
-# Create SSH startup script
+# Create SSH startup script with environment setup
 RUN echo '#!/bin/bash\n\
+# Set up environment variables\n\
+JAVA_BIN=$(which java)\n\
+JAVA_HOME_REAL=$(readlink -f $JAVA_BIN | sed "s|/bin/java||")\n\
+export JAVA_HOME=$JAVA_HOME_REAL\n\
+export SPARK_HOME=/opt/spark\n\
+export PATH=$JAVA_HOME_REAL/bin:/opt/spark/bin:$PATH\n\
+\n\
+# Ensure SSH environment file is up to date\n\
+mkdir -p /root/.ssh\n\
+echo "JAVA_HOME=$JAVA_HOME_REAL" > /root/.ssh/environment\n\
+echo "SPARK_HOME=/opt/spark" >> /root/.ssh/environment\n\
+echo "PATH=$JAVA_HOME_REAL/bin:/opt/spark/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin" >> /root/.ssh/environment\n\
+chmod 600 /root/.ssh/environment\n\
+\n\
 # Start SSH daemon in background\n\
 /usr/sbin/sshd -D &\n\
 \n\
