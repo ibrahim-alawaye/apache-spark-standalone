@@ -36,7 +36,13 @@ sudo docker network ls
 sudo docker inspect prometheus | grep NetworkMode
 sudo docker inspect grafana | grep NetworkMode
 ```
-
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer <TOKEN>" \
+  -d @api/spark_monitoring_dashboard.json \
+  http://localhost:3000/api/dashboards/db
+  ```
 **Get container IP addresses:**
 ```bash
 sudo docker inspect prometheus | grep '"IPAddress"'
