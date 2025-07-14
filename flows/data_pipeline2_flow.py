@@ -5,7 +5,7 @@ from spark_init import copy_and_submit_python_job
 def run_data_pipeline():
     return copy_and_submit_python_job(
         local_python_file="data_pipeline2.py",
-        spark_args={"spark.sql.adaptive.enabled": "true"}
+        spark_args={}
     )
 
 @flow
